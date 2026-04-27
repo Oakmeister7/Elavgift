@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Öre per kWh – Beräknare</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-grad-1: #eef2f5;
+    --bg-grad-2: #e6ecf1;
+    --card: #ffffff;
+    --ink: #0f1d2c;
+    --ink-soft: #4a5a6c;
+    --muted: #8a96a3;
+    --line: #e4e9ee;
+    --line-soft: #eef2f5;
+    --accent: #0a6b4f;
+    --accent-soft: #e8f3ef;
+    --accent-border: #c7e2d6;
+    --error: #b3261e;
+    --error-soft: #fdecea;
+    --shadow-sm: 0 1px 2px rgba(15, 29, 44, 0.04);
+    --shadow-md: 0 8px 24px rgba(15, 29, 44, 0.06), 0 2px 6px rgba(15, 29, 44, 0.04);
+    --shadow-lg: 0 24px 60px rgba(15, 29, 44, 0.08), 0 8px 18px rgba(15, 29, 44, 0.04);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(160deg, var(--bg-grad-1), var(--bg-grad-2));
+    min-height: 100vh;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 32px 32px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .subtitle {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  .tabs {
+    display: flex;
+    padding: 5px;
+    margin: 20px 32px 0;
+    background: #f1f4f7;
+    border-radius: 11px;
+    gap: 2px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: color 0.2s ease, background 0.25s ease, transform 0.1s ease, box-shadow 0.25s ease;
+  }
+
+  .tab:hover {
+    color: var(--ink);
+  }
+
+  .tab.active {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tab:active {
+    transform: scale(0.985);
+  }
+
+  .panels {
+    padding: 24px 32px 32px;
+  }
+
+  .panel {
+    display: none;
+  }
+
+  .panel.active {
+    display: block;
+    animation: fadeSlide 0.28s ease;
+  }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .field {
+    margin-bottom: 18px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .field input {
+    width: 100%;
+    padding: 14px 60px 14px 16px;
+    font: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    background: #fbfcfd;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field input::placeholder {
+    color: var(--muted);
+  }
+
+  .field input:hover {
+    border-color: #cdd5dd;
+  }
+
+  .field input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(10, 107, 79, 0.12);
+  }
+
+  .field input.invalid {
+    border-color: var(--error);
+    background: var(--error-soft);
+  }
+
+  .field input.invalid:focus {
+    box-shadow: 0 0 0 4px rgba(179, 38, 30, 0.14);
+  }
+
+  .unit {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: var(--muted);
+    pointer-events: none;
+    font-weight: 500;
+  }
+
+  .error-msg {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--error);
+    min-height: 14px;
+    line-height: 1.2;
+  }
+
+  .result {
+    margin-top: 24px;
+    padding: 28px 24px;
+    background: linear-gradient(135deg, #f7fbf9, #eef6f2);
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius-md);
+    text-align: center;
+    transition: background 0.25s ease, border-color 0.25s ease;
+  }
+
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 12px;
+    transition: color 0.25s ease;
+  }
+
+  .result-value {
+    font-size: 44px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    transition: color 0.25s ease;
+  }
+
+  .result-value .unit-suffix {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-left: 6px;
+    letter-spacing: 0;
+    transition: color 0.25s ease;
+  }
+
+  .result.placeholder {
+    background: #fafbfc;
+    border-color: var(--line);
+  }
+
+  .result.placeholder .result-label,
+  .result.placeholder .result-value,
+  .result.placeholder .result-value .unit-suffix {
+    color: var(--muted);
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .step {
+    background: #fafbfc;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  .step-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .step-title {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .step-content {
+    font-size: 15px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+  }
+
+  .step-content code {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-size: 13.5px;
+    background: #fff;
+    padding: 2px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+
+  .step.final {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+  }
+
+  .step.final .step-num {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .step.final .step-content {
+    font-weight: 600;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--muted);
+    font-size: 14px;
+    background: #fafbfc;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-md);
+  }
+
+  .card-footer {
+    padding: 14px 32px;
+    background: #fafbfc;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.01em;
+  }
+
+  @media (max-width: 520px) {
+    body { padding: 12px; }
+    .card-header { padding: 24px 20px 16px; }
+    .tabs { margin: 16px 20px 0; }
+    .panels { padding: 20px; }
+    .card-footer { padding: 12px 20px; }
+    h1 { font-size: 20px; }
+    .result { padding: 24px 18px; }
+    .result-value { font-size: 36px; }
+    .result-value .unit-suffix { font-size: 16px; }
+    .step-content code { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <header class="card-header">
+      <div class="eyebrow">Elprisverktyg</div>
+      <h1>Öre per kWh</h1>
+      <p class="subtitle">Räkna ut vad en årsavgift motsvarar i öresrabatt per kilowattimme.</p>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="calc" aria-selected="true">Beräkning</button>
+      <button class="tab" role="tab" data-tab="steps" aria-selected="false">Uträkning</button>
+    </div>
+
+    <section class="panels">
+      <div class="panel active" id="panel-calc" role="tabpanel">
+        <div class="field">
+          <label for="consumption">Årsförbrukning</label>
+          <div class="input-wrap">
+            <input type="text" inputmode="decimal" id="consumption" placeholder="t.ex. 10 000" autocomplete="off">
+            <span class="unit">kWh</span>
+          </div>
+          <div class="error-msg" id="err-consumption"></div>
+        </div>
+
+        <div class="field">
+          <label for="fee">Årsavgift</label>
+          <div class="input-wrap">
+            <input type="text" inputmode="decimal" id="fee" placeholder="t.ex. 1 200" autocomplete="off">
+            <span class="unit">SEK</span>
+          </div>
+          <div class="error-msg" id="err-fee"></div>
+        </div>
+
+        <div class="result placeholder" id="result">
+          <div class="result-label">Motsvarar</div>
+          <div class="result-value" id="result-value">— <span class="unit-suffix">öre/kWh</span></div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-steps" role="tabpanel">
+        <div id="steps-container"></div>
+      </div>
+    </section>
+
+    <footer class="card-footer">
+      Formel: (årsavgift ÷ årsförbrukning) × 100
+    </footer>
+  </main>
+
+<script>
+(function() {
+  const tabs = document.querySelectorAll('.tab');
+  const panels = {
+    calc: document.getElementById('panel-calc'),
+    steps: document.getElementById('panel-steps')
+  };
+  const consumptionEl = document.getElementById('consumption');
+  const feeEl = document.getElementById('fee');
+  const errCons = document.getElementById('err-consumption');
+  const errFee = document.getElementById('err-fee');
+  const resultEl = document.getElementById('result');
+  const resultValueEl = document.getElementById('result-value');
+  const stepsContainer = document.getElementById('steps-container');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      Object.values(panels).forEach(p => p.classList.remove('active'));
+      panels[tab.dataset.tab].classList.add('active');
+    });
+  });
+
+  function parseNum(raw) {
+    if (raw == null) return NaN;
+    const cleaned = String(raw).trim().replace(/\s/g, '').replace(',', '.');
+    if (cleaned === '') return NaN;
+    if (!/^-?\d*\.?\d+$/.test(cleaned)) return NaN;
+    return parseFloat(cleaned);
+  }
+
+  function formatSv(num, maxDecimals) {
+    if (!isFinite(num)) return '—';
+    let fixed = num.toFixed(maxDecimals);
+    let [intPart, decPart] = fixed.split('.');
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    if (decPart) decPart = decPart.replace(/0+$/, '');
+    return decPart ? intPart + ',' + decPart : intPart;
+  }
+
+  function formatInt(num) {
+    return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
+  function validate(value, field) {
+    if (field.value.trim() === '') {
+      return { ok: false, silent: true };
+    }
+    if (isNaN(value)) {
+      return { ok: false, msg: 'Ogiltigt värde' };
+    }
+    if (value <= 0) {
+      return { ok: false, msg: 'Värdet måste vara större än 0' };
+    }
+    return { ok: true };
+  }
+
+  function setError(input, errEl, result) {
+    if (result.ok || result.silent) {
+      input.classList.remove('invalid');
+      errEl.textContent = '';
+    } else {
+      input.classList.add('invalid');
+      errEl.textContent = result.msg;
+    }
+  }
+
+  function update() {
+    const cons = parseNum(consumptionEl.value);
+    const fee = parseNum(feeEl.value);
+
+    const consResult = validate(cons, consumptionEl);
+    const feeResult = validate(fee, feeEl);
+
+    setError(consumptionEl, errCons, consResult);
+    setError(feeEl, errFee, feeResult);
+
+    if (consResult.ok && feeResult.ok) {
+      const krPerKwh = fee / cons;
+      const orePerKwh = krPerKwh * 100;
+      resultEl.classList.remove('placeholder');
+      resultValueEl.innerHTML = formatSv(orePerKwh, 2) + ' <span class="unit-suffix">öre/kWh</span>';
+      renderSteps(fee, cons, krPerKwh, orePerKwh);
+    } else {
+      resultEl.classList.add('placeholder');
+      resultValueEl.innerHTML = '— <span class="unit-suffix">öre/kWh</span>';
+      renderEmptySteps(consResult, feeResult);
+    }
+  }
+
+  function renderSteps(fee, cons, krPerKwh, orePerKwh) {
+    const feeStr = formatSv(fee, 2);
+    const consStr = formatInt(cons);
+    const krStr = formatSv(krPerKwh, 4);
+    const oreStr = formatSv(orePerKwh, 2);
+
+    stepsContainer.innerHTML =
+      '<div class="steps">' +
+        '<div class="step">' +
+          '<div class="step-num">1</div>' +
+          '<div class="step-body">' +
+            '<div class="step-title">Indata</div>' +
+            '<div class="step-content">' +
+              'Årsavgift: <code>' + feeStr + ' kr</code><br>' +
+              'Årsförbrukning: <code>' + consStr + ' kWh</code>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="step">' +
+          '<div class="step-num">2</div>' +
+          '<div class="step-body">' +
+            '<div class="step-title">Formel</div>' +
+            '<div class="step-content">' +
+              '<code>öre/kWh = (årsavgift ÷ årsförbrukning) × 100</code>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="step">' +
+          '<div class="step-num">3</div>' +
+          '<div class="step-body">' +
+            '<div class="step-title">Mellansteg – kr per kWh</div>' +
+            '<div class="step-content">' +
+              '<code>' + feeStr + ' ÷ ' + consStr + ' = ' + krStr + ' kr/kWh</code>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="step final">' +
+          '<div class="step-num">4</div>' +
+          '<div class="step-body">' +
+            '<div class="step-title">Resultat – öre per kWh</div>' +
+            '<div class="step-content">' +
+              '<code>' + krStr + ' × 100 = ' + oreStr + ' öre/kWh</code>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderEmptySteps(consResult, feeResult) {
+    let msg = 'Fyll i årsförbrukning och årsavgift för att se uträkningen.';
+    if (!consResult.silent && !consResult.ok) msg = 'Kontrollera årsförbrukningen för att se uträkningen.';
+    else if (!feeResult.silent && !feeResult.ok) msg = 'Kontrollera årsavgiften för att se uträkningen.';
+    stepsContainer.innerHTML = '<div class="empty-state">' + msg + '</div>';
+  }
+
+  consumptionEl.addEventListener('input', update);
+  feeEl.addEventListener('input', update);
+
+  update();
+})();
+</script>
+</body>
+</html>
